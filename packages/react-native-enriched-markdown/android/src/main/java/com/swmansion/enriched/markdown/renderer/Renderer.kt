@@ -13,6 +13,7 @@ class Renderer {
   private var cachedStyle: StyleConfig? = null
   private var cachedContext: Context? = null
   private var cachedOnLatexError: LatexErrorReporter? = null
+  private var cachedExtensions: Set<String> = emptySet()
 
   private val collectedImageSpans = mutableListOf<ImageSpan>()
   private var lastElementMarginBottom: Float = 0f
@@ -21,16 +22,26 @@ class Renderer {
     style: StyleConfig,
     context: Context,
     onLatexError: LatexErrorReporter? = null,
+    extensions: Set<String> = emptySet(),
   ) {
-    if (cachedStyle === style && cachedContext === context && cachedOnLatexError === onLatexError) return
+    if (
+      cachedStyle === style &&
+      cachedContext === context &&
+      cachedOnLatexError === onLatexError &&
+      cachedExtensions == extensions
+    ) {
+      return
+    }
 
     cachedStyle = style
     cachedContext = context
     cachedOnLatexError = onLatexError
+    cachedExtensions = extensions
     cachedFactory =
       RendererFactory(
         RendererConfig(style, onLatexError),
         context,
+        extensions,
       ) { span -> reportImageSpan(span) }
   }
 

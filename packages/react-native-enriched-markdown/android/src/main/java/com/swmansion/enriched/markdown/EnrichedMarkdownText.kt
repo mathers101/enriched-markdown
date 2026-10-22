@@ -21,9 +21,12 @@ import com.facebook.react.uimanager.style.LogicalEdge
 import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.accessibility.AccessibleMarkdownTextView
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.parser.InlineExtension
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
+import com.swmansion.enriched.markdown.parser.withInlineExtensions
 import com.swmansion.enriched.markdown.renderer.Renderer
+import com.swmansion.enriched.markdown.renderer.RendererRegistry
 import com.swmansion.enriched.markdown.spoiler.SpoilerCapable
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlay
 import com.swmansion.enriched.markdown.spoiler.SpoilerOverlayDrawer
@@ -116,6 +119,8 @@ class EnrichedMarkdownText
     private var allowTrailingMargin: Boolean = false
     private var imageRequestHeaders: Map<String, String> = emptyMap()
     private var linkPillContent: Map<String, LinkPillContent> = emptyMap()
+    private var inlineExtensions: List<InlineExtension> = emptyList()
+    private var extensionNames: Set<String> = emptySet()
 
     private var streamingAnimation: Boolean = false
     private var previousTextLength: Int = 0
@@ -148,6 +153,14 @@ class EnrichedMarkdownText
             onContextMenuItemPressCallback?.invoke(itemText, selectedText, start, end)
           },
         )
+    }
+
+    fun setExtensions(extensions: List<InlineExtension>) {
+      RendererRegistry.load(extensions, context.classLoader)
+      if (inlineExtensions == extensions) return
+      inlineExtensions = extensions
+      extensionNames = extensions.mapTo(mutableSetOf()) { it.name }
+      scheduleRenderIfNeeded()
     }
 
     fun setMarkdownContent(markdown: String) {
@@ -299,17 +312,21 @@ class EnrichedMarkdownText
 
       val textLinkRegex = linkRegex
       val codeLinkRegex = inlineCodeLinkRegex
+      val enabledExtensions = extensionNames
+      val enabledInlineExtensions = inlineExtensions
       val renderId = ++currentRenderId
 
       executor.execute {
         try {
           val ast =
-            parser.parseMarkdown(markdown, md4cFlags, isGFM, textLinkRegex, codeLinkRegex) ?: run {
+            parser.parseMarkdown(markdown, md4cFlags, isGFM, textLinkRegex, codeLinkRegex)?.withInlineExtensions(
+              enabledInlineExtensions,
+            ) ?: run {
               mainHandler.post { if (renderId == currentRenderId && isAttachedToWindow) text = "" }
               return@execute
             }
 
-          renderer.configure(style, context, latexErrorReporter)
+          renderer.configure(style, context, latexErrorReporter, enabledExtensions)
           val styledText = renderer.renderDocument(ast, onLinkPressCallback, onLinkLongPressCallback)
 
           mainHandler.post {

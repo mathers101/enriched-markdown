@@ -24,6 +24,7 @@ import com.swmansion.enriched.markdown.utils.common.markdownEventTypeConstants
 import com.swmansion.enriched.markdown.utils.common.parseAccessibilityLabels
 import com.swmansion.enriched.markdown.utils.common.parseContextMenuItems
 import com.swmansion.enriched.markdown.utils.common.parseImageRequestHeaders
+import com.swmansion.enriched.markdown.utils.common.parseInlineExtensions
 import com.swmansion.enriched.markdown.utils.common.parseLinkPillContent
 import com.swmansion.enriched.markdown.utils.common.parseLinkRecognition
 import com.swmansion.enriched.markdown.utils.common.parseMd4cFlags
@@ -119,6 +120,14 @@ class EnrichedMarkdownTextManager :
     markdown: String?,
   ) {
     view?.setMarkdownContent(markdown ?: "")
+  }
+
+  @ReactProp(name = "extensions")
+  override fun setExtensions(
+    view: EnrichedMarkdownText?,
+    value: ReadableArray?,
+  ) {
+    view?.setExtensions(parseInlineExtensions(value))
   }
 
   @ReactProp(name = "markdownStyle")

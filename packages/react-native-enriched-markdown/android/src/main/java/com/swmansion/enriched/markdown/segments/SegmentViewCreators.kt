@@ -72,6 +72,7 @@ data class SegmentViewConfig(
   val onTaskListItemPress: ((taskIndex: Int, checked: Boolean, itemText: String) -> Unit)?,
   val onContextMenuItemPress: ((itemText: String, selectedText: String, selectionStart: Int, selectionEnd: Int) -> Unit)?,
   val onLatexError: LatexErrorReporter? = null,
+  val extensions: Set<String> = emptySet(),
 )
 
 /**

@@ -26,6 +26,7 @@ import type { NativeSyntheticEvent } from 'react-native';
 import type { MarkdownStyle, Md4cFlags } from '../types/MarkdownStyle';
 import type {
   EnrichedMarkdownTextProps,
+  MarkdownExtension,
   StreamingConfig,
   ContextMenuItem,
   SelectionMenuConfig,
@@ -46,6 +47,7 @@ import type {
 export type { MarkdownStyle, Md4cFlags };
 export type {
   EnrichedMarkdownTextProps,
+  MarkdownExtension,
   StreamingConfig,
   ContextMenuItem,
   SelectionMenuConfig,
@@ -136,6 +138,7 @@ const defaultMd4cFlags: Md4cFlags = {
 export const EnrichedMarkdownText = ({
   markdown,
   markdownStyle = {},
+  extensions,
   containerStyle,
   onLinkPress,
   onLinkLongPress,
@@ -410,8 +413,21 @@ export const EnrichedMarkdownText = ({
     [accessibilityLabels]
   );
 
+  const nativeExtensions = useMemo(
+    () =>
+      (extensions ?? []).map((extension) => ({
+        name: extension.name,
+        delimiter: extension.delimiter ?? '',
+        color: extension.color ?? '',
+        backgroundColor: extension.backgroundColor ?? '',
+        androidClassName: extension.androidClassName ?? '',
+      })),
+    [extensions]
+  );
+
   const sharedProps = {
     markdown,
+    extensions: nativeExtensions,
     linkRecognition: nativeLinkRecognition,
     markdownStyle: normalizedStyle,
     onLinkPress: handleLinkPress,

@@ -138,6 +138,7 @@ class BlockquoteContainerView(
         parentConfig.onLinkLongPress,
         blockquoteStyle,
         onLatexError = parentConfig.onLatexError,
+        extensions = parentConfig.extensions,
       )
     applySegments(rendered, reset = false)
     requestLayout()
@@ -359,6 +360,7 @@ class BlockquoteContainerView(
       config: StyleConfig,
       context: Context,
       width: Float,
+      extensions: Set<String> = emptySet(),
     ): Float {
       val style = config.blockquoteStyle
       val leftInset = ceil(style.borderWidth + style.gapWidth + style.padding).toInt()
@@ -373,7 +375,7 @@ class BlockquoteContainerView(
       val innerWidth = (width - leftInset - rightInset).coerceAtLeast(1f)
 
       val segments = splitASTIntoSegments(node)
-      val rendered = MarkdownSegmentRenderer.render(segments, config, context, null, null, style)
+      val rendered = MarkdownSegmentRenderer.render(segments, config, context, null, null, style, extensions = extensions)
 
       val fontSize = style.fontSize
       val breakStrategy = BreakStrategyUtils.resolveBreakStrategy(null)
@@ -388,6 +390,7 @@ class BlockquoteContainerView(
           breakStrategy = breakStrategy,
           allowTrailingMargin = false,
           mathHeightForIndex = { estimateMathHeight(config) },
+          extensions = extensions,
         )
 
       return childrenHeight + verticalInset * 2f + headerReserved

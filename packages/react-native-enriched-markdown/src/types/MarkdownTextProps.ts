@@ -148,6 +148,29 @@ export interface StreamingConfig {
   codeBlockMode?: 'hidden' | 'progressive';
 }
 
+/**
+ * Selects a renderer registered natively under `name`.
+ *
+ * A `delimiter` makes this an extra inline mark (`%text%` when `delimiter` is
+ * `%`). Backtick code stays the built-in code node. A name that matches a
+ * built-in node type instead replaces that renderer.
+ *
+ * `color` and `backgroundColor` are passed to the renderer as node attributes.
+ * The library does not interpret them.
+ *
+ * `androidClassName` is the renderer's fully qualified class. The class must
+ * be compiled into the app; the library loads it when this extension is set.
+ *
+ * @platform android
+ */
+export interface MarkdownExtension {
+  name: string;
+  delimiter?: string;
+  color?: string;
+  backgroundColor?: string;
+  androidClassName?: string;
+}
+
 export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
   /**
    * Markdown content to render.
@@ -159,6 +182,13 @@ export interface EnrichedMarkdownTextProps extends Omit<ViewProps, 'style'> {
    * @platform ios, android, web
    */
   markdownStyle?: MarkdownStyle;
+  /**
+   * Native renderers registered at app startup. A `delimiter` adds an inline
+   * mark alongside the built-in nodes. A name equal to a node type replaces
+   * that renderer.
+   * @platform android
+   */
+  extensions?: ReadonlyArray<MarkdownExtension>;
   /**
    * Style for the container view.
    * @platform ios, android, web

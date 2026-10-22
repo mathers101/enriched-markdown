@@ -32,6 +32,7 @@ object SegmentHeightMeasurer {
     breakStrategy: Int,
     allowTrailingMargin: Boolean,
     mathHeightForIndex: (Int) -> Float,
+    extensions: Set<String> = emptySet(),
   ): Float {
     val widthPx = ceil(contentWidthPx).toInt().coerceAtLeast(1)
     val lastIndex = segments.lastIndex
@@ -79,7 +80,8 @@ object SegmentHeightMeasurer {
           // A quote encountered here is always nested inside another quote, so it
           // carries no vertical margin (only the outermost quote does, added by
           // MeasurementStore); this mirrors BlockquoteContainerView.nested.
-          totalHeightPx += BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, contentWidthPx)
+          totalHeightPx +=
+            BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, contentWidthPx, extensions)
         }
 
         is RenderedSegment.Video -> {

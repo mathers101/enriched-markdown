@@ -6,7 +6,7 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.style.LeadingMarginSpan
 
-internal object InlineBackgroundGeometry {
+object InlineBackgroundGeometry {
   /**
    * Returns the x position of [index] relative to the line's left edge. The measuring layout keeps
    * the line's spans, so a LeadingMarginSpan is already folded into getPrimaryHorizontal — only the

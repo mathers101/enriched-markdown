@@ -12,8 +12,11 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.StateWrapper
 import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.parser.InlineExtension
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
+import com.swmansion.enriched.markdown.parser.withInlineExtensions
+import com.swmansion.enriched.markdown.renderer.RendererRegistry
 import com.swmansion.enriched.markdown.segments.BlockquoteContainerView
 import com.swmansion.enriched.markdown.segments.CodeBlockContainerView
 import com.swmansion.enriched.markdown.segments.ContainerNodeView
@@ -88,6 +91,8 @@ class EnrichedMarkdown(
   private var maxFontSizeMultiplier: Float = 0f
   private var imageRequestHeaders: Map<String, String> = emptyMap()
   private var linkPillContent: Map<String, LinkPillContent> = emptyMap()
+  private var inlineExtensions: List<InlineExtension> = emptyList()
+  private var extensionNames: Set<String> = emptySet()
   private var selectable: Boolean = true
   private var selectionColor: Int? = null
   private var selectionHandleColor: Int? = null
@@ -148,6 +153,16 @@ class EnrichedMarkdown(
   fun setMarkdownContent(markdown: String) {
     if (currentMarkdown == markdown) return
     currentMarkdown = markdown
+    renderPending = true
+  }
+
+  fun setExtensions(extensions: List<InlineExtension>) {
+    RendererRegistry.load(extensions, context.classLoader)
+    if (inlineExtensions == extensions) return
+    inlineExtensions = extensions
+    extensionNames = extensions.mapTo(mutableSetOf()) { it.name }
+    dirtyFlags += DirtyFlag.RECREATE_SEGMENTS
+    dirtyFlags += DirtyFlag.FORCE_HEIGHT
     renderPending = true
   }
 
@@ -403,6 +418,8 @@ class EnrichedMarkdown(
 
     val textLinkRegex = linkRegex
     val codeLinkRegex = inlineCodeLinkRegex
+    val enabledExtensions = extensionNames
+    val enabledInlineExtensions = inlineExtensions
     val renderId = ++currentRenderId
 
     executor.execute {
@@ -422,7 +439,9 @@ class EnrichedMarkdown(
         }
 
         val ast =
-          parser.parseMarkdown(renderableMarkdown, md4cFlags, isGFM, textLinkRegex, codeLinkRegex) ?: run {
+          parser.parseMarkdown(renderableMarkdown, md4cFlags, isGFM, textLinkRegex, codeLinkRegex)?.withInlineExtensions(
+            enabledInlineExtensions,
+          ) ?: run {
             postToMain(renderId) { applyRenderedSegments(emptyList(), false) }
             return@execute
           }
@@ -436,6 +455,7 @@ class EnrichedMarkdown(
             onLinkPressCallback,
             onLinkLongPressCallback,
             onLatexError = latexErrorReporter,
+            extensions = enabledExtensions,
           )
 
         postToMain(renderId) { applyRenderedSegments(renderedSegments, hasPendingCodeBlock) }
@@ -505,6 +525,7 @@ class EnrichedMarkdown(
       onTaskListItemPress = onTaskListItemPressCallback,
       onContextMenuItemPress = ::forwardContextMenuItemPress,
       onLatexError = latexErrorReporter,
+      extensions = extensionNames,
     )
 
   /**

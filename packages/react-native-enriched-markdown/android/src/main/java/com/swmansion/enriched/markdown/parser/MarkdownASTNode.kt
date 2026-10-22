@@ -41,6 +41,9 @@ data class MarkdownASTNode(
     BlankLine,
     Admonition,
     Video,
+
+    // Created after parsing when an extension delimiter matches. Not emitted by md4c.
+    Extension,
   }
 
   fun getAttribute(key: String): String? = attributes[key]

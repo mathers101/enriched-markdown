@@ -12,6 +12,7 @@ import com.swmansion.enriched.markdown.events.LatexErrorEvent
 import com.swmansion.enriched.markdown.events.LinkLongPressEvent
 import com.swmansion.enriched.markdown.events.LinkPressEvent
 import com.swmansion.enriched.markdown.events.TaskListItemPressEvent
+import com.swmansion.enriched.markdown.parser.InlineExtension
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.styles.LinkPillContent
 import com.swmansion.enriched.markdown.utils.text.view.SelectionMenuConfig
@@ -144,6 +145,20 @@ fun parseMd4cFlags(flags: ReadableMap?): Md4cFlags =
 
 fun parseContextMenuItems(value: ReadableArray?): List<String> =
   (0 until (value?.size() ?: 0)).mapNotNull { value?.getMap(it)?.getString("text") }
+
+/** Entries from the `extensions` prop: `{ name, delimiter, color, backgroundColor }`. */
+fun parseInlineExtensions(value: ReadableArray?): List<InlineExtension> =
+  (0 until (value?.size() ?: 0)).mapNotNull { index ->
+    val map = value?.getMap(index) ?: return@mapNotNull null
+    val name = map.getString("name")?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+    InlineExtension(
+      name = name,
+      delimiter = map.getString("delimiter") ?: "",
+      color = map.getString("color") ?: "",
+      backgroundColor = map.getString("backgroundColor") ?: "",
+      androidClassName = map.getString("androidClassName") ?: "",
+    )
+  }
 
 fun parseImageRequestHeaders(value: ReadableArray?): Map<String, String> =
   (0 until (value?.size() ?: 0))

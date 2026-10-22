@@ -687,6 +687,20 @@ export interface NativeProps extends ViewProps {
    * @default 'tail'
    */
   ellipsizeMode?: CodegenTypes.WithDefault<string, 'tail'>;
+  /**
+   * Registered native renderers. `delimiter` wraps an extra inline mark.
+   * `color` and `backgroundColor` are forwarded as node attributes.
+   * Android dispatches these through RendererRegistry. iOS ignores them.
+   */
+  extensions?: ReadonlyArray<
+    Readonly<{
+      name: string;
+      delimiter: string;
+      color: string;
+      backgroundColor: string;
+      androidClassName: string;
+    }>
+  >;
 }
 
 export default codegenNativeComponent<NativeProps>('EnrichedMarkdownText', {

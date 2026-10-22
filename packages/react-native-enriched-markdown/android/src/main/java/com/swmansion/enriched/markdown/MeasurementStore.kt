@@ -13,9 +13,12 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
+import com.swmansion.enriched.markdown.parser.InlineExtension
 import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.parser.Parser
+import com.swmansion.enriched.markdown.parser.withInlineExtensions
 import com.swmansion.enriched.markdown.renderer.Renderer
+import com.swmansion.enriched.markdown.renderer.RendererRegistry
 import com.swmansion.enriched.markdown.segments.BlockquoteContainerView
 import com.swmansion.enriched.markdown.segments.CodeBlockContainerView
 import com.swmansion.enriched.markdown.segments.MarkdownSegmentRenderer
@@ -41,6 +44,7 @@ import com.swmansion.enriched.markdown.utils.common.getIntOrDefault
 import com.swmansion.enriched.markdown.utils.common.getMapOrNull
 import com.swmansion.enriched.markdown.utils.common.getStringOrDefault
 import com.swmansion.enriched.markdown.utils.common.parseImageRequestHeaders
+import com.swmansion.enriched.markdown.utils.common.parseInlineExtensions
 import com.swmansion.enriched.markdown.utils.common.parseLinkPillContent
 import com.swmansion.enriched.markdown.utils.common.parseLinkRecognition
 import com.swmansion.enriched.markdown.utils.text.extensions.replaceMathSpansWithPlaceholders
@@ -341,6 +345,7 @@ object MeasurementStore {
     result = 31 * result + allowTrailingMargin.hashCode()
     result = 31 * result + imageRequestHeaders.hashCode()
     result = 31 * result + linkPillContent.hashCode()
+    result = 31 * result + parseInlineExtensions(props.getArrayOrNull("extensions")).hashCode()
     result = 31 * result + props.getIntOrDefault("numberOfLines", 0)
     result = 31 * result + props.getStringOrDefault("ellipsizeMode", EllipsizeUtils.DEFAULT_MODE).hashCode()
     return result
@@ -417,6 +422,7 @@ object MeasurementStore {
         parseLinkPillContent(props.getArrayOrNull("linkPillContent")),
         linkRecognition.text,
         linkRecognition.inlineCode,
+        parseInlineExtensions(props.getArrayOrNull("extensions")),
       )
     spannable?.replaceMathSpansWithPlaceholders(context)
     val textToMeasure = spannable ?: markdown
@@ -508,23 +514,27 @@ object MeasurementStore {
     val fontSize = getInitialFontSize(styleMap, context, allowFontScaling, fontScale, maxFontSizeMultiplier)
 
     val linkRecognition = parseLinkRecognition(props.getMapOrNull("linkRecognition"))
+    val inlineExtensions = parseInlineExtensions(props.getArrayOrNull("extensions"))
+    RendererRegistry.load(inlineExtensions, context.classLoader)
+    val extensions = inlineExtensions.mapTo(mutableSetOf()) { it.name }
 
     return try {
       val ast =
-        Parser.shared.parseMarkdown(
-          markdown,
-          md4cFlags,
-          isGFM,
-          linkRecognition.text,
-          linkRecognition.inlineCode,
-        )
+        Parser.shared
+          .parseMarkdown(
+            markdown,
+            md4cFlags,
+            isGFM,
+            linkRecognition.text,
+            linkRecognition.inlineCode,
+          )?.withInlineExtensions(inlineExtensions)
           ?: return YogaMeasureOutput.make(PixelUtil.toDIPFromPixel(width), 0f)
 
       val style = StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier)
       style.imageRequestHeaders = parseImageRequestHeaders(props.getArrayOrNull("imageRequestHeaders"))
       style.linkPillContent = parseLinkPillContent(props.getArrayOrNull("linkPillContent"))
       val segments = splitASTIntoSegments(ast)
-      val renderedSegments = MarkdownSegmentRenderer.render(segments, style, context, null, null)
+      val renderedSegments = MarkdownSegmentRenderer.render(segments, style, context, null, null, extensions = extensions)
 
       val mathHeightByIndex = HashMap<Int, Float>()
       val mathSegmentIndices = mutableListOf<Int>()
@@ -603,7 +613,7 @@ object MeasurementStore {
 
           is RenderedSegment.Blockquote -> {
             totalHeightPx += style.blockquoteStyle.marginTop
-            totalHeightPx += BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, width)
+            totalHeightPx += BlockquoteContainerView.measureBlockquoteNodeHeight(segment.node, style, context, width, extensions)
             maxContentWidthPx = width
             if (includeBottomMargin) {
               totalHeightPx += style.blockquoteStyle.marginBottom
@@ -670,15 +680,20 @@ object MeasurementStore {
     linkPillContent: Map<String, LinkPillContent> = emptyMap(),
     linkRegex: LinkRegexConfig? = null,
     inlineCodeLinkRegex: LinkRegexConfig? = null,
+    inlineExtensions: List<InlineExtension> = emptyList(),
   ): Spannable? {
     if (styleMap == null) return null
 
+    RendererRegistry.load(inlineExtensions, context.classLoader)
     return try {
-      val ast = Parser.shared.parseMarkdown(markdown, md4cFlags, isGFM, linkRegex, inlineCodeLinkRegex) ?: return null
+      val ast =
+        Parser.shared.parseMarkdown(markdown, md4cFlags, isGFM, linkRegex, inlineCodeLinkRegex)?.withInlineExtensions(
+          inlineExtensions,
+        ) ?: return null
       val style = StyleConfig(styleMap, context, allowFontScaling, maxFontSizeMultiplier)
       style.imageRequestHeaders = imageRequestHeaders
       style.linkPillContent = linkPillContent
-      measureRenderer.configure(style, context)
+      measureRenderer.configure(style, context, extensions = inlineExtensions.mapTo(mutableSetOf()) { it.name })
       measureRenderer.renderDocument(ast, null)
     } catch (e: Exception) {
       Log.w(TAG, "Failed to render markdown for measurement, falling back to raw text", e)

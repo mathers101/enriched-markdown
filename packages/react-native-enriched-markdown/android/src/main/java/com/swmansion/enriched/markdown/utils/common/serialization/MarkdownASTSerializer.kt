@@ -303,6 +303,13 @@ object MarkdownASTSerializer {
         buffer.append("`")
       }
 
+      NodeType.Extension -> {
+        val delimiter = node.getAttribute("delimiter") ?: ""
+        buffer.append(delimiter)
+        appendChildren(node, buffer)
+        buffer.append(delimiter)
+      }
+
       NodeType.Link -> {
         if (node.getAttribute("recognizedLink") == "true") {
           appendChildren(node, buffer)

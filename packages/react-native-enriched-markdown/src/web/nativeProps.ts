@@ -52,6 +52,7 @@ export const NATIVE_ONLY_PROP_NAMES: Record<NativeOnlyPropName, true> = {
   writingDirection: true,
   numberOfLines: true,
   ellipsizeMode: true,
+  extensions: true,
 };
 
 const NATIVE_ONLY_PROPS = new Set<string>(Object.keys(NATIVE_ONLY_PROP_NAMES));

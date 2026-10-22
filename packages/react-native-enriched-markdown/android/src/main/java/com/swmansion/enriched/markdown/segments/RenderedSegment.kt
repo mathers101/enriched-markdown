@@ -68,11 +68,21 @@ object MarkdownSegmentRenderer {
     onLinkLongPress: ((String) -> Unit)?,
     blockquoteStyle: BlockquoteStyle? = null,
     onLatexError: LatexErrorReporter? = null,
+    extensions: Set<String> = emptySet(),
   ): List<RenderedSegment> =
     segments.map { segment ->
       when (segment) {
         is MarkdownSegment.Text -> {
-          renderTextSegment(segment.nodes, style, context, onLinkPress, onLinkLongPress, blockquoteStyle, onLatexError)
+          renderTextSegment(
+            segment.nodes,
+            style,
+            context,
+            onLinkPress,
+            onLinkLongPress,
+            blockquoteStyle,
+            onLatexError,
+            extensions,
+          )
         }
 
         is MarkdownSegment.Table -> {
@@ -111,8 +121,9 @@ object MarkdownSegmentRenderer {
     onLinkLongPress: ((String) -> Unit)?,
     blockquoteStyle: BlockquoteStyle?,
     onLatexError: LatexErrorReporter?,
+    extensions: Set<String>,
   ): RenderedSegment.Text {
-    val renderer = Renderer().apply { configure(style, context, onLatexError) }
+    val renderer = Renderer().apply { configure(style, context, onLatexError, extensions) }
     val signature = SegmentSignature.signatureForNodes(nodes) xor SegmentSignature.TEXT_KIND_SALT
 
     val styledText =

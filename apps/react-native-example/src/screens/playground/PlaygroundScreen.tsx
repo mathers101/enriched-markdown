@@ -20,6 +20,8 @@ import {
   type StyleState,
 } from 'react-native-enriched-markdown';
 import { FormattingToolbar } from '../../components/FormattingToolbar';
+import { CustomCode } from '../../extensions/CustomCode';
+import { CustomCode2 } from '../../extensions/CustomCode2';
 
 const MARKDOWN_STYLE = {
   link: { color: '#2563EB', underline: true as const },
@@ -61,6 +63,8 @@ const INLINE_IMAGE_URI = Image.resolveAssetSource(
 ).uri;
 
 const REFERENCE_REGEX = /ref:[a-z]+/;
+const SAMPLE_MARKDOWN =
+  'Hello here is some markdown and here `is some code which will go over the next line` and %custom code which will do the same maybe% and %%another custom code%%';
 const DEFAULT_INPUT_LINE_HEIGHT = undefined;
 const TALL_INPUT_LINE_HEIGHT = 36;
 
@@ -68,7 +72,7 @@ export default function PlaygroundScreen() {
   const headerHeight = useHeaderHeight();
   const inputRef = useRef<EnrichedMarkdownTextInputInstance>(null);
   const [state, setState] = useState<StyleState | null>(null);
-  const [markdown, setMarkdown] = useState('');
+  const [markdown, setMarkdown] = useState(SAMPLE_MARKDOWN);
   const [sizeMode, setSizeMode] = useState<'base' | 'max'>('base');
   const [hasSelection, setHasSelection] = useState(false);
   const [underlineEnabled, setUnderlineEnabled] = useState(true);
@@ -218,6 +222,7 @@ export default function PlaygroundScreen() {
           <EnrichedMarkdownTextInput
             markdownShortcuts
             ref={inputRef}
+            defaultValue={SAMPLE_MARKDOWN}
             placeholder="Type markdown here..."
             placeholderTextColor="#9CA3AF"
             style={[
@@ -284,6 +289,7 @@ export default function PlaygroundScreen() {
             <EnrichedMarkdownText
               markdown={markdown}
               markdownStyle={MARKDOWN_STYLE}
+              extensions={[CustomCode, CustomCode2]}
               flavor={recognitionMode === 1 ? 'commonmark' : 'github'}
               linkRecognition={
                 recognitionMode

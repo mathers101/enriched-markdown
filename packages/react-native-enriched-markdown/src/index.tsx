@@ -7,6 +7,7 @@ export type {
 export { default as EnrichedMarkdownText } from './native/EnrichedMarkdownText';
 export type {
   EnrichedMarkdownTextProps,
+  MarkdownExtension,
   StreamingConfig,
   MarkdownStyle,
   Md4cFlags,

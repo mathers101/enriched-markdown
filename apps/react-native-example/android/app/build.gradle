@@ -11,7 +11,7 @@ def isRNRepoEnabled() {
     return System.getenv("DISABLE_RNREPO") == null
 }
 
-// Use RNRepo in CI builds. 
+// Use RNRepo in CI builds.
 // Set DISABLE_RNREPO to any value to disable RNRepo.
 if (isCIEnabled() && isRNRepoEnabled()) {
     apply plugin: "org.rnrepo.tools.prebuilds-plugin"
@@ -106,6 +106,21 @@ android {
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
+        }
+    }
+    def extensionAndroidDirs = []
+    def extensionsRoot = file("../../src/extensions")
+    if (extensionsRoot.isDirectory()) {
+        extensionsRoot.eachDir { extensionDir ->
+            def androidDir = new File(extensionDir, "android")
+            if (androidDir.isDirectory()) {
+                extensionAndroidDirs << androidDir
+            }
+        }
+    }
+    sourceSets {
+        main {
+            java.srcDirs += extensionAndroidDirs
         }
     }
     buildTypes {

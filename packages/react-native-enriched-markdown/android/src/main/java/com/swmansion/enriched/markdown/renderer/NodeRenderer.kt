@@ -29,6 +29,7 @@ data class RendererConfig(
 class RendererFactory(
   private val config: RendererConfig,
   val context: Context,
+  private val extensions: Set<String> = emptySet(),
   private val onImageSpanCreated: (ImageSpan) -> Unit,
 ) {
   val blockStyleContext = BlockStyleContext()
@@ -114,49 +115,72 @@ class RendererFactory(
   private val softBreakRenderer = SoftBreakRenderer()
 
   private val renderers: Map<MarkdownASTNode.NodeType, NodeRenderer> by lazy {
-    buildMap {
-      put(MarkdownASTNode.NodeType.Paragraph, ParagraphRenderer(config))
-      put(MarkdownASTNode.NodeType.Heading, HeadingRenderer(config))
-      put(MarkdownASTNode.NodeType.Blockquote, BlockquoteRenderer(config))
-      // A list-nested admonition falls back to the inline blockquote renderer
-      // (no themed header); top-level admonitions use the segment container path.
-      put(MarkdownASTNode.NodeType.Admonition, BlockquoteRenderer(config))
-      put(MarkdownASTNode.NodeType.CodeBlock, CodeBlockRenderer(config))
-      put(MarkdownASTNode.NodeType.UnorderedList, ListRenderer(config, isOrdered = false))
-      put(MarkdownASTNode.NodeType.OrderedList, ListRenderer(config, isOrdered = true))
-      put(MarkdownASTNode.NodeType.ListItem, ListItemRenderer(config))
-      put(MarkdownASTNode.NodeType.Text, textRenderer)
-      put(MarkdownASTNode.NodeType.Link, LinkRenderer(config))
-      put(MarkdownASTNode.NodeType.Strong, StrongRenderer(config))
-      put(MarkdownASTNode.NodeType.Emphasis, EmphasisRenderer(config))
-      put(MarkdownASTNode.NodeType.Strikethrough, StrikethroughRenderer(config))
-      put(MarkdownASTNode.NodeType.Underline, UnderlineRenderer(config))
-      put(MarkdownASTNode.NodeType.Superscript, SuperscriptRenderer())
-      put(MarkdownASTNode.NodeType.Subscript, SubscriptRenderer())
-      put(MarkdownASTNode.NodeType.Highlight, HighlightRenderer())
-      put(MarkdownASTNode.NodeType.Code, CodeRenderer(config))
-      put(MarkdownASTNode.NodeType.Image, ImageRenderer())
-      put(MarkdownASTNode.NodeType.LineBreak, lineBreakRenderer)
-      put(MarkdownASTNode.NodeType.SoftBreak, softBreakRenderer)
-      put(MarkdownASTNode.NodeType.ThematicBreak, ThematicBreakRenderer(config))
-      put(MarkdownASTNode.NodeType.BlankLine, BlankLineRenderer(config))
-      put(MarkdownASTNode.NodeType.Spoiler, SpoilerRenderer())
-      if (FeatureFlags.IS_MATH_ENABLED) {
-        try {
-          val mathInlineRendererClass = Class.forName("com.swmansion.enriched.markdown.renderer.MathInlineRenderer")
-          val constructor = mathInlineRendererClass.getConstructor(RendererConfig::class.java, Context::class.java)
-          val mathInlineRenderer = constructor.newInstance(config, context) as NodeRenderer
-          put(MarkdownASTNode.NodeType.LatexMathInline, mathInlineRenderer)
-          // Isolated display math is promoted to a block segment in the parser
-          // (see promoteDisplayMathFromParagraphs). What reaches the factory is
-          // genuinely mid-line display math (e.g. `a $$x$$ b`); render it inline
-          // rather than dropping it via the TextRenderer fallback.
-          put(MarkdownASTNode.NodeType.LatexMathDisplay, mathInlineRenderer)
-        } catch (_: Exception) {
-          // math not available
+    val builtins =
+      buildMap {
+        put(MarkdownASTNode.NodeType.Paragraph, ParagraphRenderer(config))
+        put(MarkdownASTNode.NodeType.Heading, HeadingRenderer(config))
+        put(MarkdownASTNode.NodeType.Blockquote, BlockquoteRenderer(config))
+        // A list-nested admonition falls back to the inline blockquote renderer
+        // (no themed header); top-level admonitions use the segment container path.
+        put(MarkdownASTNode.NodeType.Admonition, BlockquoteRenderer(config))
+        put(MarkdownASTNode.NodeType.CodeBlock, CodeBlockRenderer(config))
+        put(MarkdownASTNode.NodeType.UnorderedList, ListRenderer(config, isOrdered = false))
+        put(MarkdownASTNode.NodeType.OrderedList, ListRenderer(config, isOrdered = true))
+        put(MarkdownASTNode.NodeType.ListItem, ListItemRenderer(config))
+        put(MarkdownASTNode.NodeType.Text, textRenderer)
+        put(MarkdownASTNode.NodeType.Link, LinkRenderer(config))
+        put(MarkdownASTNode.NodeType.Strong, StrongRenderer(config))
+        put(MarkdownASTNode.NodeType.Emphasis, EmphasisRenderer(config))
+        put(MarkdownASTNode.NodeType.Strikethrough, StrikethroughRenderer(config))
+        put(MarkdownASTNode.NodeType.Underline, UnderlineRenderer(config))
+        put(MarkdownASTNode.NodeType.Superscript, SuperscriptRenderer())
+        put(MarkdownASTNode.NodeType.Subscript, SubscriptRenderer())
+        put(MarkdownASTNode.NodeType.Highlight, HighlightRenderer())
+        put(MarkdownASTNode.NodeType.Code, CodeRenderer(config))
+        put(MarkdownASTNode.NodeType.Extension, ExtensionMarkRenderer(config))
+        put(MarkdownASTNode.NodeType.Image, ImageRenderer())
+        put(MarkdownASTNode.NodeType.LineBreak, lineBreakRenderer)
+        put(MarkdownASTNode.NodeType.SoftBreak, softBreakRenderer)
+        put(MarkdownASTNode.NodeType.ThematicBreak, ThematicBreakRenderer(config))
+        put(MarkdownASTNode.NodeType.BlankLine, BlankLineRenderer(config))
+        put(MarkdownASTNode.NodeType.Spoiler, SpoilerRenderer())
+        if (FeatureFlags.IS_MATH_ENABLED) {
+          try {
+            val mathInlineRendererClass = Class.forName("com.swmansion.enriched.markdown.renderer.MathInlineRenderer")
+            val constructor = mathInlineRendererClass.getConstructor(RendererConfig::class.java, Context::class.java)
+            val mathInlineRenderer = constructor.newInstance(config, context) as NodeRenderer
+            put(MarkdownASTNode.NodeType.LatexMathInline, mathInlineRenderer)
+            // Isolated display math is promoted to a block segment in the parser
+            // (see promoteDisplayMathFromParagraphs). What reaches the factory is
+            // genuinely mid-line display math (e.g. `a $$x$$ b`); render it inline
+            // rather than dropping it via the TextRenderer fallback.
+            put(MarkdownASTNode.NodeType.LatexMathDisplay, mathInlineRenderer)
+          } catch (_: Exception) {
+            // math not available
+          }
         }
       }
+    applyExtensions(builtins)
+  }
+
+  /**
+   * Replaces a built-in renderer when [extensions] names its node type and the
+   * app registered a factory for that name. Names that are not node types are
+   * delimiter marks, dispatched through [ExtensionMarkRenderer].
+   */
+  private fun applyExtensions(builtins: Map<MarkdownASTNode.NodeType, NodeRenderer>): Map<MarkdownASTNode.NodeType, NodeRenderer> {
+    if (extensions.isEmpty()) return builtins
+    val resolved = builtins.toMutableMap()
+    for (name in extensions) {
+      val type = MarkdownASTNode.NodeType.entries.find { it.name.equals(name, ignoreCase = true) } ?: continue
+      val renderer = RendererRegistry.create(name, config)
+      if (renderer == null) {
+        android.util.Log.w("RendererFactory", "Extension \"$name\" is not registered")
+        continue
+      }
+      resolved[type] = renderer
     }
+    return resolved
   }
 
   /**
